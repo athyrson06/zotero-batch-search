@@ -1,6 +1,15 @@
 const collectionName = "My New Collection";
 
-const titles = [ "Paper Title 1", "Paper Title 2", "Paper Title 3" ];
+const titles = [
+    "Paper Title 1",
+    "Paper Title 2",
+    "Paper Title 3"
+];
+
+// Normalize target titles
+const normalizedTitles = new Map(
+    titles.map(t => [t.trim().toLowerCase(), t])
+);
 
 const libraryID = Zotero.Libraries.userLibraryID;
 
@@ -26,18 +35,28 @@ for (const title of titles) {
     const search = new Zotero.Search();
     search.libraryID = libraryID;
 
-    search.addCondition("title", "is", title);
+    // Broader search
+    search.addCondition("title", "contains", title);
 
     const matches = await search.search();
 
-    if (matches.length > 0) {
-        ids.push(...matches);
-        foundTitles.push(title);
+    for (const id of matches) {
+        const item = Zotero.Items.get(id);
+
+        const itemTitle = item.getField("title")
+            .trim()
+            .toLowerCase();
+
+        if (normalizedTitles.has(itemTitle)) {
+            ids.push(id);
+            foundTitles.push(item.getField("title"));
+        }
     }
 }
 
 // Remove duplicates
 const uniqueIDs = [...new Set(ids)];
+const uniqueTitles = [...new Set(foundTitles)];
 
 // Add items to collection
 if (uniqueIDs.length > 0) {
@@ -50,6 +69,6 @@ return {
     collection: collection.name,
     collectionID: collection.id,
     matchedItems: uniqueIDs.length,
-    matchedTitles: foundTitles.length,
-    titlesFound: foundTitles
+    matchedTitles: uniqueTitles.length,
+    titlesFound: uniqueTitles
 };
